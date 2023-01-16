@@ -3,7 +3,10 @@ import re
 import os
 import pathlib
 import multiprocessing
+import subprocess
+import sys
 
+from rich.syntax import Syntax
 from textual.app import App
 from textual.reactive import reactive
 from textual.containers import Container, Horizontal
@@ -13,16 +16,21 @@ DIR = pathlib.Path(__file__).parent
 pattern_ls = re.compile(r"\s+(.+?)\s+\((.+?)\)\s+\((.+?)\)")
 
 
-def run_on_newprocess(command: str):
+def _run_on_newprocess(commands: list):
+    subprocess.Popen(commands).wait()
+    os.execlp(sys.executable, sys.executable, __file__)
+
+
+def run_on_newprocess(commands: list):
     """在新的进程中执行命令"""
     multiprocessing.set_start_method("spawn")
     multiprocessing.Process(
-        target=os.system,
-        args=(command,)
+        target=_run_on_newprocess,
+        args=(commands,)
     ).start()
 
 
-class ScreenItem(Static):
+class ScreenItem(Horizontal):
     """Screen视图行"""
 
     def __init__(self, serial: str, date: str, info: str):
@@ -45,18 +53,7 @@ class ScreenItem(Static):
             self.remove()
         elif event.button.id == "screenitem-into":
             self.app.exit()
-            run_on_newprocess(f"screen -r {self.serial}")
-
-
-class ScreenViewFields(Container):
-    """Screen视图字段"""
-
-    def compose(self):
-        yield Label("序列号")
-        yield Label("创建时间")
-        yield Label("Info")
-        yield Label("", classes="screenviewfields-btns")
-        yield Label("", classes="screenviewfields-btns")
+            run_on_newprocess(["screen", "-r", self.serial])
 
 
 class ScreenView(Container):
@@ -64,7 +61,14 @@ class ScreenView(Container):
 
     def compose(self):
         yield Label("正在运行的终端", id="screenview-title")
-        yield ScreenViewFields()
+        yield Horizontal(
+            Label("序列号"),
+            Label("创建时间"),
+            Label("状态"),
+            Label("", classes="screenviewfields-btns"),
+            Label("", classes="screenviewfields-btns"),
+            id="screenviewfields"
+        )
 
     def add(self, serial: str, date: str, info: str):
         self.mount(ScreenItem(serial, date, info))
@@ -74,74 +78,59 @@ class ScreenView(Container):
             i.remove()
 
 
-class PopenLog(Container):
-    """日志"""
-
-    curline = reactive(Horizontal(classes="code-line"))
-
-    def on_mount(self):
-        self.mount(self.curline)
-
-    def newline(self):
-        """创建新行"""
-        line = Horizontal(classes="code-line")
-        self.mount(line)
-        self.curline = line
-        # 延迟设置滚动条位置
-        self.timer = self.set_interval(0.1, self.update)
-
-    def write_command(self, text: str):
-        """写入命令"""
-        self.curline.mount(Label("$", classes="code-com code-cmdsign"))
-        self.curline.mount(Label(text, classes="code-cmd"))
-        self.newline()
-
-    def write(self, text: str):
-        """输出日志"""
-        lines = text.splitlines()
-        if lines:
-            lasttext = lines.pop()
-            for i in lines:
-                self.curline.mount(Label(i))
-                self.newline()
-            self.curline.mount(Label(lasttext))
-            if text.endswith(os.linesep):
-                self.newline()
-
-    async def update(self):
-        self.scroll_to(0, self.max_scroll_y, animate=False)
-        await self.timer.stop()
-
-
 class PopenExec(Container):
     """执行命令以及左侧输出界面"""
 
+    text = reactive("")
+
+    def __init__(self):
+        super().__init__()
+        self.logger = Static(expand=True)
+
     def compose(self):
         yield Label("输出")
-        yield Container(PopenLog())
+        yield Container(self.logger, id="log-container")
 
     def exec(self, command: str):
         """执行命令并记录, 返回本次命令的文本"""
-        logger = self.query_one(PopenLog)
-        logger.write_command(command)
+        text = f"> {command}\n"
         with os.popen(command) as p:
             res = p.read()
-        logger.write(res)
+        text = text + res
+        self.text += text
+        self.update(self.text)
         return res
 
+    def update(self, text: str):
+        """写入文本"""
+        try:
+            syntax = Syntax(
+                text,
+                "bash",
+                theme="github-dark",
+            )
+        except Exception as e:
+            self.logger.update(str(e))
+        else:
+            self.logger.update(syntax)
+            # 延迟设置滚动条位置
+            self.timer = self.set_interval(0.1, self.update_scroll)
 
-class PanelTerminalName(Input):
-    """终端名输入框"""
+    async def update_scroll(self):
+            self.query_one("#log-container").scroll_end(animate=False)
+            await self.timer.stop()
 
-
-class PanelCommand(Input):
-    """命令输入框"""
+    def clear(self):
+        """清空"""
+        self.text = ""
+        self.query_one(Static).update()
 
 
 class Panel(Container):
     """右侧面板"""
 
-    def compose(self):
+    def __init__(self):
+        super().__init__()
         # 判断拥有可执行权的文件, 并设为默认命令
         command = ""
         for path in os.listdir():
@@ -151,32 +140,26 @@ class Panel(Container):
                     break
             except OSError:
                 pass
+        self.input_terminal = Input(placeholder="终端名")
+        self.input_command = Input(command, placeholder="命令")
 
-        yield PanelTerminalName(placeholder="终端名")
-        yield PanelCommand(command, placeholder="命令")
+    def compose(self):
+
+        yield self.input_terminal
+        yield self.input_command
         yield Button("添加终端", variant="success", id="panel-add")
 
     def on_button_pressed(self, event: Button.Pressed):
-        cmd_text = "screen"
+        commands = ["screen"]
         if event.button.id == "panel-add":
-            # 如果输入了命令则直接执行命令，否则退出再执行命令
-            name = self.query_one(PanelTerminalName).value
-            command = self.query_one(PanelCommand).value
+            name = self.input_terminal.value
+            command = self.input_command.value
             if name:
-                cmd_text = f"{cmd_text} -S {name}"
+                commands += ["-S", name]
             if command:
-                cmd_text = f"{cmd_text} {command}"
+                commands.append(command)
             self.app.exit()
-            run_on_newprocess(cmd_text)
-
-
-class MainContainer(Container):
-    """主容器"""
-
-    def compose(self):
-        yield ScreenView()
-        yield PopenExec()
-        yield Panel()
+            run_on_newprocess(commands)
 
 
 class ViewModes(Enum):
@@ -200,8 +183,13 @@ class ScreenManager(App):
 
     def compose(self):
         yield Header(True)
+        yield Horizontal(
+            ScreenView(),
+            PopenExec(),
+            Panel(),
+            id="main-container",
+        )
         yield Footer()
-        yield MainContainer(classes="viewmode-screens")
 
     def on_mount(self):
         self.action_refresh()
@@ -217,12 +205,12 @@ class ScreenManager(App):
         """切换视图模式"""
         if self.viewmode == ViewModes.SCREENS:
             self.viewmode = ViewModes.OUTPUT
-            self.query_one(MainContainer).remove_class("viewmode-screens")
-            self.query_one(MainContainer).add_class("viewmode-output")
+            self.query_one(ScreenView).styles.display = "none"
+            self.query_one(PopenExec).styles.display = "block"
         elif self.viewmode == ViewModes.OUTPUT:
             self.viewmode = ViewModes.SCREENS
-            self.query_one(MainContainer).remove_class("viewmode-output")
-            self.query_one(MainContainer).add_class("viewmode-screens")
+            self.query_one(ScreenView).styles.display = "block"
+            self.query_one(PopenExec).styles.display = "none"
 
 
 if __name__ == "__main__":

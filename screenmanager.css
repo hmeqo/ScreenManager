@@ -1,21 +1,14 @@
-MainContainer {
-    layout: horizontal;
-}
-
-.viewmode-screens PopenExec {
-    display: none;
-}
-
-.viewmode-output ScreenView {
-    display: none;
-}
-
 ScreenView,
 PopenExec {
+    display: none;
     width: 3fr;
     background: #88888819;
     border: tall #8888889f;
     padding: 0 1;
+}
+
+ScreenView {
+    display: block;
 }
 
 #screenview-title {
@@ -24,25 +17,27 @@ PopenExec {
     text-align: center;
 }
 
-ScreenViewFields {
-    layout: horizontal;
+#screenviewfields {
     height: auto;
 }
 
-ScreenViewFields * {
+#screenviewfields * {
     width: 2fr;
     text-align: center;
     background: #88888825;
     border-right: tall #0000;
 }
 
-.screenitem-btns,
-.screenviewfields-btns {
+#screenviewfields .screenviewfields-btns {
     width: 1fr;
 }
 
+#log-container {
+    background: #0d1117;
+}
+
 ScreenItem {
-    layout: horizontal;
+    height: auto;
     background: #009f253f;
     margin: 1 0;
 }
@@ -52,6 +47,7 @@ ScreenItem>* {
 }
 
 .screenitem-btns {
+    width: 1fr;
     padding: 0;
     border: none;
     text-style: none;
@@ -63,28 +59,6 @@ ScreenItem>* {
 
 #screenitem-terminal:hover {
     background: #df0000a5;
-}
-
-PopenExec * {
-    width: 100%;
-}
-
-PopenLog {
-    width: 1fr;
-    height: auto;
-}
-
-.code-com {
-    width: auto;
-}
-
-.code-cmdsign {
-    margin-right: 1;
-    color: #0f0d;
-}
-
-.code-cmd {
-    color: #f00d;
 }
 
 Panel {
