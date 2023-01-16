@@ -70,9 +70,5 @@ Panel {
 Panel Button {
     margin: 1;
     width: 100%;
-}
-
-#panel-add {
-    color: $success;
-    background: $success;
+    text-style: none;
 }

@@ -1,7 +1,7 @@
 from enum import Enum, auto
 import re
 import os
-import pathlib
+from pathlib import Path
 import multiprocessing
 import subprocess
 import sys
@@ -12,7 +12,7 @@ from textual.reactive import reactive
 from textual.containers import Container, Horizontal
 from textual.widgets import Header, Footer, Static, Label, Button, Input, Pretty
 
-DIR = pathlib.Path(__file__).parent
+DIR = Path(__file__).parent
 pattern_ls = re.compile(r"\s+(.+?)\s+\((.+?)\)\s+\((.+?)\)")
 
 
@@ -64,7 +64,7 @@ class ScreenView(Container):
         yield Horizontal(
             Label("序列号"),
             Label("创建时间"),
-            Label("状态"),
+            Label("连接状态"),
             Label("", classes="screenviewfields-btns"),
             Label("", classes="screenviewfields-btns"),
             id="screenviewfields"
@@ -147,7 +147,7 @@ class Panel(Container):
 
         yield self.input_terminal
         yield self.input_command
-        yield Button("添加终端", variant="success", id="panel-add")
+        yield Button("添加终端", id="panel-add")
 
     def on_button_pressed(self, event: Button.Pressed):
         commands = ["screen"]
