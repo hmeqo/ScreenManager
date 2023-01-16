@@ -1,0 +1,104 @@
+MainContainer {
+    layout: horizontal;
+}
+
+.viewmode-screens PopenExec {
+    display: none;
+}
+
+.viewmode-output ScreenView {
+    display: none;
+}
+
+ScreenView,
+PopenExec {
+    width: 3fr;
+    background: #88888819;
+    border: tall #8888889f;
+    padding: 0 1;
+}
+
+#screenview-title {
+    width: 100%;
+    background: #005fff9f;
+    text-align: center;
+}
+
+ScreenViewFields {
+    layout: horizontal;
+    height: auto;
+}
+
+ScreenViewFields * {
+    width: 2fr;
+    text-align: center;
+    background: #88888825;
+    border-right: tall #0000;
+}
+
+.screenitem-btns,
+.screenviewfields-btns {
+    width: 1fr;
+}
+
+ScreenItem {
+    layout: horizontal;
+    background: #009f253f;
+    margin: 1 0;
+}
+
+ScreenItem>* {
+    width: 2fr;
+}
+
+.screenitem-btns {
+    padding: 0;
+    border: none;
+    text-style: none;
+}
+
+#screenitem-terminal {
+    background: #ff0000a5;
+}
+
+#screenitem-terminal:hover {
+    background: #df0000a5;
+}
+
+PopenExec * {
+    width: 100%;
+}
+
+PopenLog {
+    width: 1fr;
+    height: auto;
+}
+
+.code-com {
+    width: auto;
+}
+
+.code-cmdsign {
+    margin-right: 1;
+    color: #0f0d;
+}
+
+.code-cmd {
+    color: #f00d;
+}
+
+Panel {
+    width: 1fr;
+    background: #88888819;
+    border: tall #8888889f;
+}
+
+Panel Button {
+    margin: 1;
+    width: 100%;
+}
+
+#panel-add {
+    color: $success;
+    background: $success;
+}
