@@ -1,3 +1,7 @@
+Button {
+    min-width: 0;
+}
+
 ScreenView,
 PopenExec {
     display: none;
@@ -22,14 +26,9 @@ ScreenView {
 }
 
 #screenviewfields * {
-    width: 2fr;
     text-align: center;
     background: #88888825;
     border-right: tall #0000;
-}
-
-#screenviewfields .screenviewfields-btns {
-    width: 1fr;
 }
 
 #log-container {
@@ -42,12 +41,17 @@ ScreenItem {
     margin: 1 0;
 }
 
+#screenviewfields *,
 ScreenItem>* {
+    width: 5fr;
+}
+
+.screenitem-btns,
+#screenviewfields .screenviewfields-btns {
     width: 2fr;
 }
 
 .screenitem-btns {
-    width: 1fr;
     padding: 0;
     border: none;
     text-style: none;
@@ -68,7 +72,10 @@ Panel {
 }
 
 Panel Button {
-    margin: 1;
-    width: 100%;
+    width: 1fr;
     text-style: none;
+}
+
+Panel Horizontal {
+    margin: 1;
 }

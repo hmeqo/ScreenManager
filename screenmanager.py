@@ -10,13 +10,13 @@ from rich.syntax import Syntax
 from textual.app import App
 from textual.reactive import reactive
 from textual.containers import Container, Horizontal
-from textual.widgets import Header, Footer, Static, Label, Button, Input, Pretty
+from textual.widgets import Header, Footer, Static, Label, Button, Input, Pretty, Checkbox
 
 DIR = Path(__file__).parent
 pattern_ls = re.compile(r"\s+(.+?)\s+\((.+?)\)\s+\((.+?)\)")
 
 
-def _run_on_newprocess(commands: list):
+def _run_on_newprocess_inner(commands: list):
     subprocess.Popen(commands).wait()
     os.execlp(sys.executable, sys.executable, __file__)
 
@@ -25,7 +25,7 @@ def run_on_newprocess(commands: list):
     """在新的进程中执行命令"""
     multiprocessing.set_start_method("spawn")
     multiprocessing.Process(
-        target=_run_on_newprocess,
+        target=_run_on_newprocess_inner,
         args=(commands,)
     ).start()
 
@@ -44,15 +44,15 @@ class ScreenItem(Horizontal):
         yield Label(self.date)
         yield Label(self.info)
         yield Button("进入", id="screenitem-into", classes="screenitem-btns")
-        yield Button("终止", id="screenitem-terminal", classes="screenitem-btns")
+        yield Button("结束", id="screenitem-terminal", classes="screenitem-btns")
 
     def on_button_pressed(self, event: Button.Pressed):
         if event.button.id == "screenitem-terminal":
-            command = f"screen -X -S {self.serial} quit"
-            self.app.query_one(PopenExec).exec(command)
+            command = f"screen -S {self.serial} -X quit"
+            app.query_one(PopenExec).exec(command)
             self.remove()
         elif event.button.id == "screenitem-into":
-            self.app.exit()
+            app.exit()
             run_on_newprocess(["screen", "-r", self.serial])
 
 
@@ -60,7 +60,7 @@ class ScreenView(Container):
     """Screen视图"""
 
     def compose(self):
-        yield Label("正在运行的终端", id="screenview-title")
+        yield Label("正在运行的虚拟终端", id="screenview-title")
         yield Horizontal(
             Label("序列号"),
             Label("创建时间"),
@@ -82,6 +82,7 @@ class PopenExec(Container):
     """执行命令以及左侧输出界面"""
 
     text = reactive("")
+    timers = reactive([])
 
     def __init__(self):
         super().__init__()
@@ -103,22 +104,19 @@ class PopenExec(Container):
 
     def update(self, text: str):
         """写入文本"""
-        try:
-            syntax = Syntax(
-                text,
-                "bash",
-                theme="github-dark",
-            )
-        except Exception as e:
-            self.logger.update(str(e))
-        else:
-            self.logger.update(syntax)
-            # 延迟设置滚动条位置
-            self.timer = self.set_interval(0.1, self.update_scroll)
+        syntax = Syntax(
+            text,
+            "bash",
+            theme="github-dark",
+        )
+        self.logger.update(syntax)
+        # 延迟设置滚动条位置
+        self.timers.append(self.set_interval(0.1, self.update_scroll))
 
     async def update_scroll(self):
-            self.query_one("#log-container").scroll_end(animate=False)
-            await self.timer.stop()
+        for timer in self.timers:
+            await timer.stop()
+        self.query_one("#log-container").scroll_end(animate=False)
 
     def clear(self):
         """清空"""
@@ -147,7 +145,10 @@ class Panel(Container):
 
         yield self.input_terminal
         yield self.input_command
-        yield Button("添加终端", id="panel-add")
+        yield Horizontal(
+            Button("添加并连接", id="panel-add"),
+            Button("添加", id="panel-static-add"),
+        )
 
     def on_button_pressed(self, event: Button.Pressed):
         commands = ["screen"]
@@ -158,8 +159,20 @@ class Panel(Container):
                 commands += ["-S", name]
             if command:
                 commands.append(command)
-            self.app.exit()
+            app.exit()
             run_on_newprocess(commands)
+        elif event.button.id == "panel-static-add":
+            commands.append("-dm")
+            name = self.input_terminal.value
+            command = self.input_command.value
+            if name:
+                commands += ["-S", name]
+            if command:
+                commands.append(command)
+            self.input_terminal.value = ""
+            self.input_command.value = ""
+            app.query_one(PopenExec).exec(" ".join(commands))
+            app.action_refresh()
 
 
 class ViewModes(Enum):
