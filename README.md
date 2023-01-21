@@ -1,10 +1,7 @@
 # ScreenManager
 
-Download code file (screenmanager.py, screenmanager.css), and run command on shell
+Download code file (screenmanager.py, screenmanager.css), and run command on bash
 
 ```bash
-# Windows
-$ python screenmanager.py
-# Linux
-$ python3 screenmanager.py
+python3 screenmanager.py
 ```
