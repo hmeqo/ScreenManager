@@ -53,7 +53,7 @@ class ScreenItem(Horizontal):
             self.remove()
         elif event.button.id == "screenitem-into":
             app.exit()
-            run_on_newprocess(["screen", "-r", self.serial])
+            run_on_newprocess(["screen", "-r", "-A", self.serial])
 
 
 class ScreenView(Container):
@@ -142,12 +142,11 @@ class Panel(Container):
         self.input_command = Input(command, placeholder="命令")
 
     def compose(self):
-
         yield self.input_terminal
         yield self.input_command
         yield Horizontal(
             Button("添加并连接", id="panel-add"),
-            Button("添加", id="panel-static-add"),
+            Button("添加", id="panel-add-detached"),
         )
 
     def on_button_pressed(self, event: Button.Pressed):
@@ -161,7 +160,7 @@ class Panel(Container):
                 commands.append(command)
             app.exit()
             run_on_newprocess(commands)
-        elif event.button.id == "panel-static-add":
+        elif event.button.id == "panel-add-detached":
             commands.append("-dm")
             name = self.input_terminal.value
             command = self.input_command.value
