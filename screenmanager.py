@@ -114,8 +114,8 @@ class PopenExec(Container):
         self.timers.append(self.set_interval(0.1, self.update_scroll))
 
     async def update_scroll(self):
-        for timer in self.timers:
-            await timer.stop()
+        while self.timers:
+            await self.timers.pop().stop()
         self.query_one("#log-container").scroll_end(animate=False)
 
     def clear(self):
